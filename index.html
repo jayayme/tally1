@@ -407,7 +407,7 @@ let saveTimer = null;
 
 function initUserData(user) {
   // Per-user document: users/{uid}/appstate
-  const STATE_DOC = doc(db, 'users', user.uid, 'appstate');
+  const STATE_DOC = doc(db, 'users', user.uid);
 
   window.fbSave = function(immediate) {
     setSyncStatus('syncing');
