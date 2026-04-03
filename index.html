@@ -71,27 +71,27 @@
   .breadcrumb { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
   .breadcrumb span { cursor: pointer; color: var(--text2); } .breadcrumb span:hover { color: var(--accent); }
   .main-title { font-size: 19px; flex: 1; min-width: 80px; font-style: italic; }
-  .task-list { flex: 1; overflow-y: auto; padding: 12px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .task-list { flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
 
   /* ── TASK CARD ── */
   .task-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.15s; }
   .task-card:hover { border-color: var(--surface3); }
   .task-card.done { opacity: 0.5; }
-  .task-row { display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; }
-  .task-check { width: 17px; height: 17px; flex-shrink: 0; border: 1.5px solid var(--border); border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 2px; transition: all 0.15s; }
+  .task-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 10px 12px 12px; }
+  .task-check { width: 18px; height: 18px; flex-shrink: 0; border: 1.5px solid var(--border); border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 2px; transition: all 0.15s; }
   .task-check:hover { border-color: var(--accent); }
   .task-check.checked { background: var(--accent); border-color: var(--accent); }
   .task-check.checked::after { content: '✓'; font-size: 11px; color: var(--bg); font-weight: bold; }
-  .task-body { flex: 1; min-width: 0; }
-  .task-name { font-size: 14px; color: var(--text); line-height: 1.5; word-break: break-word; }
+  .task-body { flex: 1; min-width: 0; overflow: hidden; }
+  .task-name { font-size: 14px; color: var(--text); line-height: 1.55; word-break: break-word; overflow-wrap: break-word; }
   .task-card.done .task-name { text-decoration: line-through; color: var(--text3); }
-  .task-meta { display: flex; gap: 5px; margin-top: 4px; flex-wrap: wrap; align-items: center; }
-  .tag { font-size: 10px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); color: var(--text2); white-space: nowrap; font-family: monospace; }
+  .task-meta { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; align-items: center; row-gap: 3px; }
+  .tag { font-size: 10px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--border); color: var(--text2); white-space: nowrap; font-family: monospace; }
   .tag.deadline { border-color: var(--accent2); color: var(--accent2); }
   .tag.time { border-color: var(--accent3); color: var(--accent3); }
   .tag.overdue { border-color: var(--danger); color: var(--danger); }
-  .task-actions { display: flex; gap: 2px; flex-shrink: 0; }
-  .icon-btn { background: none; border: none; cursor: pointer; color: var(--text3); padding: 3px 6px; border-radius: 3px; font-size: 13px; line-height: 1; transition: all 0.1s; }
+  .task-actions { display: flex; gap: 0; flex-shrink: 0; align-self: flex-start; }
+  .icon-btn { background: none; border: none; cursor: pointer; color: var(--text3); padding: 4px 6px; border-radius: 3px; font-size: 13px; line-height: 1; transition: all 0.1s; }
   .icon-btn:hover { color: var(--text); background: var(--surface2); }
   .icon-btn.danger:hover { color: var(--danger); }
 
@@ -249,12 +249,40 @@
   .folder-header-title { font-size: 15px; font-style: italic; }
   .section-sep { height: 1px; background: var(--border); margin: 2px 0 8px; }
   .mobile-menu-btn { display: none; background: none; border: none; color: var(--text2); font-size: 20px; cursor: pointer; padding: 2px 6px; line-height: 1; }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 49; }
+  .sidebar-backdrop.show { display: block; }
+  .add-task-extras { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .add-extras-toggle { display: none; }
   @media (max-width: 640px) {
     .mobile-menu-btn { display: block !important; }
     .sidebar { width: 0; min-width: 0; border-right: none; position: absolute; z-index: 50; height: calc(100vh - 57px); height: calc(100dvh - 57px); }
     .sidebar.mobile-open { width: 220px; border-right: 1px solid var(--border); box-shadow: 4px 0 24px rgba(0,0,0,0.6); }
+    .hide-mobile { display: none !important; }
+    /* Header */
+    header { padding: 9px 12px 8px; }
+    .app-title { font-size: 18px; }
+    /* Task list */
+    .task-list { padding: 8px 8px; gap: 5px; }
+    .task-row { padding: 11px 8px 11px 10px; gap: 8px; }
+    .task-check { width: 20px; height: 20px; margin-top: 1px; }
+    .task-check.checked::after { font-size: 13px; }
+    .task-name { font-size: 14px; }
+    .task-meta { margin-top: 4px; gap: 3px; }
+    .icon-btn { padding: 5px 7px; font-size: 14px; }
+    .star-btn { padding: 5px 6px !important; font-size: 17px !important; }
+    /* Add task bar */
+    .add-task-bar { padding: 8px 10px; gap: 6px; }
+    .add-task-extras { display: none; width: 100%; }
+    .add-task-extras.open { display: flex; }
+    .add-extras-toggle { display: flex; }
     .form-input.wide, .form-input.narrow, .form-select, .form-input { width: 100% !important; }
-    .add-task-bar { gap: 6px; } .form-group { width: 100%; } .hide-mobile { display: none !important; }
+    .form-group { width: 100%; }
+    /* Hide format toolbar — use plain input on mobile */
+    .format-toolbar { display: none; }
+    .rich-input { min-height: 38px; }
+    /* Main content header */
+    .main-header { padding: 8px 10px; }
+    .progress-bar-wrap { width: 90px !important; }
   }
 
   /* ── IMPORTANT TASK ── */
@@ -322,6 +350,7 @@
   </div>
 </header>
 
+<div id="sidebar-backdrop" class="sidebar-backdrop" onclick="closeMobile()"></div>
 <div class="layout">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">Workspace</div>
@@ -354,11 +383,14 @@
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();addTask()}"
             onkeyup="updateFmtState()" onmouseup="updateFmtState()"></div>
         </div>
-        <div class="form-group"><div class="form-label">Deadline</div><input class="form-input narrow" type="datetime-local" id="new-task-deadline"></div>
-        <div class="form-group"><div class="form-label">Timeframe</div><input class="form-input narrow" id="new-task-timeframe" placeholder="e.g. 2 weeks"></div>
-        <div class="form-group"><div class="form-label">Est. hrs</div><input class="form-input" style="width:72px" type="number" min="0" step="0.5" id="new-task-est" placeholder="0"></div>
-        <div class="form-group"><div class="form-label">Category</div><select class="form-select" id="new-task-cat" style="width:115px" onchange="renderFolderSelect()"></select></div>
-        <div class="form-group"><div class="form-label">Folder</div><select class="form-select" id="new-task-folder" style="width:115px"></select></div>
+        <div class="add-task-extras" id="add-task-extras">
+          <div class="form-group"><div class="form-label">Deadline</div><input class="form-input narrow" type="datetime-local" id="new-task-deadline"></div>
+          <div class="form-group"><div class="form-label">Timeframe</div><input class="form-input narrow" id="new-task-timeframe" placeholder="e.g. 2 weeks"></div>
+          <div class="form-group"><div class="form-label">Est. hrs</div><input class="form-input" style="width:72px" type="number" min="0" step="0.5" id="new-task-est" placeholder="0"></div>
+          <div class="form-group"><div class="form-label">Category</div><select class="form-select" id="new-task-cat" style="width:115px" onchange="renderFolderSelect()"></select></div>
+          <div class="form-group"><div class="form-label">Folder</div><select class="form-select" id="new-task-folder" style="width:115px"></select></div>
+        </div>
+        <button class="btn btn-secondary btn-sm add-extras-toggle" id="add-extras-toggle" onclick="toggleAddExtras()" style="align-self:flex-end">+ Options</button>
         <button class="star-btn" id="new-task-star" onclick="toggleNewImportant()" title="Mark as important" style="align-self:flex-end;font-size:18px;padding:7px 8px">☆</button>
         <button class="btn btn-primary" onclick="addTask()" style="align-self:flex-end">Add</button>
       </div>
@@ -584,8 +616,9 @@ let currentPanel='tasks';
 function sched(){if(window.fbSave)window.fbSave(false);}
 
 // ── MOBILE ──
-function toggleMobile(){document.getElementById('sidebar').classList.toggle('mobile-open');}
-function closeMobile(){document.getElementById('sidebar').classList.remove('mobile-open');}
+function toggleMobile(){const open=document.getElementById('sidebar').classList.toggle('mobile-open');document.getElementById('sidebar-backdrop')?.classList.toggle('show',open);}
+function closeMobile(){document.getElementById('sidebar').classList.remove('mobile-open');document.getElementById('sidebar-backdrop')?.classList.remove('show');}
+function toggleAddExtras(){const el=document.getElementById('add-task-extras'),btn=document.getElementById('add-extras-toggle');if(!el)return;const open=el.classList.toggle('open');if(btn)btn.textContent=open?'− Options':'+ Options';}
 
 // ── PANELS ──
 function showPanel(p){
