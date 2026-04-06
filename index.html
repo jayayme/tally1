@@ -309,6 +309,12 @@
   .notes-sidebar-item:hover { background: var(--surface2); color: var(--text); }
   .notes-sidebar-item.active { border-left-color: var(--accent3); color: var(--accent3); background: var(--surface2); }
   @media (max-width: 640px) { .notes-grid { grid-template-columns: 1fr; padding: 8px 8px; } }
+  /* ── ARCHIVE ── */
+  .archive-header { display: flex; align-items: center; gap: 8px; padding: 12px 4px 8px; cursor: pointer; color: var(--text3); font-size: 12px; letter-spacing: 0.05em; user-select: none; border-top: 1px solid var(--border); margin-top: 8px; transition: color 0.15s; }
+  .archive-header:hover { color: var(--text2); }
+  .archive-chev { font-size: 9px; transition: transform 0.2s; display: inline-block; flex-shrink: 0; }
+  .archive-chev.open { transform: rotate(90deg); }
+  .tag.completed-on { border-color: var(--text3); color: var(--text3); }
 
   /* ── STREAK & BADGES ── */
   .streak-display { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; display: flex; align-items: center; gap: 18px; }
@@ -630,6 +636,7 @@ window._activeView={catId:'general',folderId:null};
 window._nextId=200;
 window._progress={completedDates:[],badges:[],longestStreak:0};
 window._notes=[];
+window._archiveOpen=false;
 window._newImportant=false;
 
 // Shorthand references
@@ -712,25 +719,42 @@ function renderMain(){
   document.getElementById('breadcrumb').innerHTML=folder&&cat?`<span onclick="setAV({catId:'${cat.id}',folderId:null});render();sched()">${esc(cat.name)}</span> <span style="color:var(--text3)">›</span> <span style="color:var(--text2)">${esc(folder.name)}</span>`:'';
   document.getElementById('main-title').textContent=folder?folder.name:(cat?cat.name:'Tasks');
   const filtered=T().filter(t=>t.catId===AV().catId&&(AV().folderId?t.folderId===AV().folderId:true));
-  const done=filtered.filter(t=>t.done).length,total=filtered.length;
+  const active=filtered.filter(t=>!t.done);
+  const archived=filtered.filter(t=>t.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
   const pw=document.getElementById('progress-wrap');
-  if(total){const pct=Math.round(done/total*100),col=folder?folder.color:(cat?cat.color:'#888');pw.innerHTML=`<div class="progress-bar-wrap" style="width:130px"><div class="progress-bar" style="width:${pct}%;background:${col}"></div></div><div class="progress-text">${done}/${total} complete</div>`;}else pw.innerHTML='';
+  if(filtered.length){const pct=Math.round(archived.length/filtered.length*100),col=folder?folder.color:(cat?cat.color:'#888');pw.innerHTML=`<div class="progress-bar-wrap" style="width:130px"><div class="progress-bar" style="width:${pct}%;background:${col}"></div></div><div class="progress-text">${archived.length}/${filtered.length} complete</div>`;}else pw.innerHTML='';
   const el=document.getElementById('task-list');
   if(!filtered.length){el.innerHTML=`<div class="empty"><strong>Nothing here yet.</strong>Add a task below to get started.</div>`;renderCatSelect();return;}
   el.innerHTML='';
-  if(!AV().folderId){
-    T().filter(t=>t.catId===AV().catId&&!t.folderId).forEach(t=>el.appendChild(buildCard(t)));
+  // Active tasks
+  if(!active.length){
+    const em=document.createElement('div');em.className='empty';
+    em.innerHTML=`<strong>All done! ✓</strong>No active tasks here — add something new or check the archive below.`;
+    el.appendChild(em);
+  } else if(!AV().folderId){
+    T().filter(t=>t.catId===AV().catId&&!t.folderId&&!t.done).forEach(t=>el.appendChild(buildCard(t)));
     F().filter(f=>f.catId===AV().catId).forEach(f=>{
-      const ft=T().filter(t=>t.catId===AV().catId&&t.folderId===f.id);
+      const ft=T().filter(t=>t.catId===AV().catId&&t.folderId===f.id&&!t.done);
       if(!ft.length)return;
       const h=document.createElement('div');h.className='folder-header';
       h.innerHTML=`<span>📁</span><span class="folder-header-title" style="color:${f.color}">${esc(f.name)}</span><span style="font-size:10px;color:var(--text3);margin-left:4px">${ft.length} task${ft.length!==1?'s':''}</span>`;
       el.appendChild(h);const sep=document.createElement('div');sep.className='section-sep';el.appendChild(sep);
       ft.forEach(t=>el.appendChild(buildCard(t)));
     });
-  }else filtered.forEach(t=>el.appendChild(buildCard(t)));
+  } else {
+    active.forEach(t=>el.appendChild(buildCard(t)));
+  }
+  // Archive
+  if(archived.length){
+    const ah=document.createElement('div');ah.className='archive-header';
+    ah.innerHTML=`<span class="archive-chev ${window._archiveOpen?'open':''}">▶</span><span>Completed (${archived.length})</span>`;
+    ah.onclick=()=>{window._archiveOpen=!window._archiveOpen;renderMain();};
+    el.appendChild(ah);
+    if(window._archiveOpen)archived.forEach(t=>el.appendChild(buildCard(t)));
+  }
   renderCatSelect();
 }
+function fmtCompletedDate(ts){const d=new Date(ts);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 
 function buildCard(task){
   const cat=C().find(c=>c.id===task.catId);
@@ -745,7 +769,8 @@ function buildCard(task){
   else if(task.estHours)tags+=`<span class="tag time">~${task.estHours}h est</span>`;
   if(task.actualHours!==''&&task.actualHours!==null&&task.actualHours!==undefined)tags+=`<span class="tag time">✓ ${task.actualHours}h actual</span>`;
   if(task.important)tags+=`<span class="tag important">★ Important</span>`;
-  if(task.catId==='general')tags+=`<button class="recategorize-btn" onclick="openRecategorize('${task.id}')">re-categorize</button>`;
+  if(task.done&&task.completedAt)tags+=`<span class="tag completed-on">✓ ${fmtCompletedDate(task.completedAt)}</span>`;
+  if(task.catId==='general'&&!task.done)tags+=`<button class="recategorize-btn" onclick="openRecategorize('${task.id}')">re-categorize</button>`;
   const sd=task.subtasks.filter(s=>s.done).length;
   card.innerHTML=`<div class="task-row">
     <div class="task-check ${task.done?'checked':''}" onclick="toggleTask('${task.id}')"></div>
@@ -876,7 +901,8 @@ function renderFolderSelect(){const cs=document.getElementById('new-task-cat'),f
 function toggleTask(id){
   const t=T().find(t=>t.id===id);if(!t)return;
   const prev=countDone();t.done=!t.done;const next=countDone();
-  if(t.done&&next>prev){recordCompletion();checkBadges();checkMilestones(prev,next);}
+  if(t.done){t.completedAt=Date.now();if(next>prev){recordCompletion();checkBadges();checkMilestones(prev,next);}}
+  else{t.completedAt=null;}
   sched();render();
 }
 function toggleExpand(id){const t=T().find(t=>t.id===id);if(t){t.expanded=!t.expanded;sched();render();}}
