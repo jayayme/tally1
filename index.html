@@ -309,6 +309,27 @@
   .notes-sidebar-item:hover { background: var(--surface2); color: var(--text); }
   .notes-sidebar-item.active { border-left-color: var(--accent3); color: var(--accent3); background: var(--surface2); }
   @media (max-width: 640px) { .notes-grid { grid-template-columns: 1fr; padding: 8px 8px; } }
+  /* ── SMART VIEWS (Today / This Week) ── */
+  .smart-cat-item { padding: 8px 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text2); border-left: 2px solid transparent; transition: all 0.15s; user-select: none; }
+  .smart-cat-item:hover { background: var(--surface2); color: var(--text); }
+  .smart-cat-item.today.active { color: var(--accent); border-left-color: var(--accent); background: var(--surface2); }
+  .smart-cat-item.thisweek.active { color: var(--accent3); border-left-color: var(--accent3); background: var(--surface2); }
+  .smart-cat-item .cat-count { font-size: 10px; background: var(--surface3); padding: 1px 5px; border-radius: 8px; flex-shrink: 0; font-family: monospace; }
+  .tag.today-tag { border-color: var(--accent); color: var(--accent); }
+  .tag.thisweek-tag { border-color: var(--accent3); color: var(--accent3); }
+  .tag.ctx-cat { font-family: var(--font); font-style: italic; }
+  .smart-tag-btn { background: none; border: 1px solid transparent; cursor: pointer; padding: 3px 5px; border-radius: 3px; font-size: 10px; font-family: monospace; font-weight: bold; line-height: 1; transition: all 0.1s; }
+  .smart-tag-btn.t-btn { color: var(--text3); }
+  .smart-tag-btn.t-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .smart-tag-btn.t-btn.active { color: var(--accent); background: rgba(232,197,71,0.12); border-color: var(--accent); }
+  .smart-tag-btn.w-btn { color: var(--text3); }
+  .smart-tag-btn.w-btn:hover { color: var(--accent3); border-color: var(--accent3); }
+  .smart-tag-btn.w-btn.active { color: var(--accent3); background: rgba(122,184,160,0.12); border-color: var(--accent3); }
+  .quick-tag-pill { background: none; border: 1px solid var(--border); cursor: pointer; color: var(--text3); padding: 5px 9px; border-radius: 10px; font-size: 11px; line-height: 1; transition: all 0.12s; font-family: var(--font); white-space: nowrap; align-self: flex-end; }
+  .quick-tag-pill:hover { color: var(--text); border-color: var(--text3); }
+  .quick-tag-pill.today-active { border-color: var(--accent); color: var(--accent); background: rgba(232,197,71,0.1); }
+  .quick-tag-pill.week-active { border-color: var(--accent3); color: var(--accent3); background: rgba(122,184,160,0.1); }
+
   /* ── ARCHIVE ── */
   .archive-header { display: flex; align-items: center; gap: 8px; padding: 12px 4px 8px; cursor: pointer; color: var(--text3); font-size: 12px; letter-spacing: 0.05em; user-select: none; border-top: 1px solid var(--border); margin-top: 8px; transition: color 0.15s; }
   .archive-header:hover { color: var(--text2); }
@@ -415,6 +436,8 @@
           <div class="form-group"><div class="form-label">Folder</div><select class="form-select" id="new-task-folder" style="width:115px"></select></div>
         </div>
         <button class="btn btn-secondary btn-sm add-extras-toggle" id="add-extras-toggle" onclick="toggleAddExtras()" style="align-self:flex-end">+ Options</button>
+        <button class="quick-tag-pill" id="new-task-today-btn" onclick="toggleNewToday()" title="Add to Today">☀️ Today</button>
+        <button class="quick-tag-pill" id="new-task-week-btn" onclick="toggleNewThisWeek()" title="Add to This Week">📆 Week</button>
         <button class="star-btn" id="new-task-star" onclick="toggleNewImportant()" title="Mark as important" style="align-self:flex-end;font-size:18px;padding:7px 8px">☆</button>
         <button class="btn btn-primary" onclick="addTask()" style="align-self:flex-end">Add</button>
       </div>
@@ -638,6 +661,8 @@ window._progress={completedDates:[],badges:[],longestStreak:0};
 window._notes=[];
 window._archiveOpen=false;
 window._newImportant=false;
+window._newToday=false;
+window._newThisWeek=false;
 
 // Shorthand references
 function C(){return window._categories;}
@@ -674,6 +699,21 @@ function renderSidebar(){
   const el=document.getElementById('sidebar-list');
   el.innerHTML='';
   const tasksLabel=document.createElement('div');tasksLabel.className='sidebar-section-label';tasksLabel.textContent='Tasks';el.appendChild(tasksLabel);
+  // Today smart view
+  const todayCnt=T().filter(t=>t.today&&!t.done).length;
+  const todayItem=document.createElement('div');
+  todayItem.className='smart-cat-item'+(AV().type==='today'?' today active':'');
+  todayItem.innerHTML=`<span style="font-size:13px">☀️</span><span style="flex:1;font-size:13px">Today</span>${todayCnt?`<span class="cat-count" style="color:var(--accent)">${todayCnt}</span>`:''}`;
+  todayItem.onclick=()=>{setAV({type:'today'});closeMobile();showPanel('tasks');render();};
+  el.appendChild(todayItem);
+  // This Week smart view
+  const weekCnt=T().filter(t=>t.thisWeek&&!t.done).length;
+  const weekItem=document.createElement('div');
+  weekItem.className='smart-cat-item'+(AV().type==='thisWeek'?' thisweek active':'');
+  weekItem.innerHTML=`<span style="font-size:13px">📆</span><span style="flex:1;font-size:13px">This Week</span>${weekCnt?`<span class="cat-count" style="color:var(--accent3)">${weekCnt}</span>`:''}`;
+  weekItem.onclick=()=>{setAV({type:'thisWeek'});closeMobile();showPanel('tasks');render();};
+  el.appendChild(weekItem);
+  const smartSep=document.createElement('div');smartSep.style.cssText='height:1px;background:var(--border);margin:4px 0 2px';el.appendChild(smartSep);
   C().forEach(cat=>{
     const cf=F().filter(f=>f.catId===cat.id);
     const cnt=T().filter(t=>t.catId===cat.id&&!t.done).length;
@@ -712,8 +752,34 @@ function renderSidebar(){
   el.appendChild(notesItem);
 }
 
+// ── SMART VIEWS ──
+function renderSmartMain(type){
+  const isToday=type==='today';
+  document.getElementById('breadcrumb').innerHTML='';
+  document.getElementById('main-title').textContent=isToday?'☀️ Today':'📆 This Week';
+  const filtered=T().filter(t=>isToday?t.today:t.thisWeek);
+  const active=filtered.filter(t=>!t.done);
+  const archived=filtered.filter(t=>t.done).sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+  const pw=document.getElementById('progress-wrap');
+  if(filtered.length){const pct=Math.round(archived.length/filtered.length*100),col=isToday?'var(--accent)':'var(--accent3)';pw.innerHTML=`<div class="progress-bar-wrap" style="width:130px"><div class="progress-bar" style="width:${pct}%;background:${col}"></div></div><div class="progress-text">${archived.length}/${filtered.length} complete</div>`;}else pw.innerHTML='';
+  const el=document.getElementById('task-list');
+  if(!filtered.length){el.innerHTML=`<div class="empty"><strong>Nothing here yet.</strong>Tag any task as <span style="color:${isToday?'var(--accent)':'var(--accent3)'}">T</span> or <span style="color:${isToday?'var(--accent)':'var(--accent3)'}">W</span> using the buttons on its card, or toggle <em>${isToday?'Today':'This Week'}</em> when adding a new task.</div>`;renderCatSelect();return;}
+  el.innerHTML='';
+  if(!active.length){const em=document.createElement('div');em.className='empty';em.innerHTML=`<strong>All done! ✓</strong>No active tasks for ${isToday?'today':'this week'}.`;el.appendChild(em);}
+  else active.forEach(t=>el.appendChild(buildCard(t,true)));
+  if(archived.length){
+    const ah=document.createElement('div');ah.className='archive-header';
+    ah.innerHTML=`<span class="archive-chev ${window._archiveOpen?'open':''}">▶</span><span>Completed (${archived.length})</span>`;
+    ah.onclick=()=>{window._archiveOpen=!window._archiveOpen;renderMain();};
+    el.appendChild(ah);
+    if(window._archiveOpen)archived.forEach(t=>el.appendChild(buildCard(t,true)));
+  }
+  renderCatSelect();
+}
+
 // ── MAIN ──
 function renderMain(){
+  if(AV().type==='today'||AV().type==='thisWeek'){renderSmartMain(AV().type);return;}
   const cat=C().find(c=>c.id===AV().catId);
   const folder=AV().folderId?F().find(f=>f.id===AV().folderId):null;
   document.getElementById('breadcrumb').innerHTML=folder&&cat?`<span onclick="setAV({catId:'${cat.id}',folderId:null});render();sched()">${esc(cat.name)}</span> <span style="color:var(--text3)">›</span> <span style="color:var(--text2)">${esc(folder.name)}</span>`:'';
@@ -756,7 +822,7 @@ function renderMain(){
 }
 function fmtCompletedDate(ts){const d=new Date(ts);return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
 
-function buildCard(task){
+function buildCard(task,showContext=false){
   const cat=C().find(c=>c.id===task.catId);
   const folder=task.folderId?F().find(f=>f.id===task.folderId):null;
   const acc=folder?folder.color:(cat?cat.color:'#38342e');
@@ -764,11 +830,14 @@ function buildCard(task){
   card.className='task-card'+(task.done?' done':'')+(task.important?' important':'');
   card.style.borderLeftColor=acc;
   let tags='';
+  if(showContext&&cat)tags+=`<span class="tag ctx-cat" style="border-color:${cat.color}55;color:${cat.color}">${esc(cat.name)}${folder?` › ${esc(folder.name)}`:''}</span>`;
   if(task.deadline){const d=new Date(task.deadline),diff=d-new Date();tags+=`<span class="tag ${!task.done&&diff<0?'overdue':'deadline'}">⏰ ${fmtDL(d)}</span>`;if(!task.done&&task.estHours){const h=diff/3600000;tags+=`<span class="tag time">~${task.estHours}h · ${h>0?Math.round(task.estHours/h*100):100}% of time</span>`;}}
   else if(task.timeframe){tags+=`<span class="tag deadline">📅 ${esc(task.timeframe)}</span>`;if(task.estHours)tags+=`<span class="tag time">~${task.estHours}h est</span>`;}
   else if(task.estHours)tags+=`<span class="tag time">~${task.estHours}h est</span>`;
   if(task.actualHours!==''&&task.actualHours!==null&&task.actualHours!==undefined)tags+=`<span class="tag time">✓ ${task.actualHours}h actual</span>`;
   if(task.important)tags+=`<span class="tag important">★ Important</span>`;
+  if(task.today&&AV().type!=='today')tags+=`<span class="tag today-tag">Today</span>`;
+  if(task.thisWeek&&AV().type!=='thisWeek')tags+=`<span class="tag thisweek-tag">This Week</span>`;
   if(task.done&&task.completedAt)tags+=`<span class="tag completed-on">✓ ${fmtCompletedDate(task.completedAt)}</span>`;
   if(task.catId==='general'&&!task.done)tags+=`<button class="recategorize-btn" onclick="openRecategorize('${task.id}')">re-categorize</button>`;
   const sd=task.subtasks.filter(s=>s.done).length;
@@ -780,6 +849,8 @@ function buildCard(task){
       ${task.subtasks.length?`<div class="progress-text" style="margin-top:3px">${sd}/${task.subtasks.length} subtasks</div>`:''}
     </div>
     <div class="task-actions">
+      <button class="smart-tag-btn t-btn ${task.today?'active':''}" onclick="toggleToday('${task.id}')" title="${task.today?'Remove from Today':'Add to Today'}">T</button>
+      <button class="smart-tag-btn w-btn ${task.thisWeek?'active':''}" onclick="toggleThisWeek('${task.id}')" title="${task.thisWeek?'Remove from This Week':'Add to This Week'}">W</button>
       <button class="star-btn ${task.important?'starred':''}" onclick="toggleImportant('${task.id}')" title="Toggle important">${task.important?'★':'☆'}</button>
       <button class="icon-btn" onclick="toggleExpand('${task.id}')">${task.expanded?'▲':'▼'}</button>
       <button class="icon-btn" onclick="openEditTask('${task.id}')">✎</button>
@@ -894,7 +965,7 @@ function launchConfetti(){
 function stopConfetti(){cancelAnimationFrame(confettiAnim);const c=document.getElementById('confetti-canvas');c.getContext('2d').clearRect(0,0,c.width,c.height);}
 
 // ── SELECTS ──
-function renderCatSelect(){const s=document.getElementById('new-task-cat');if(!s)return;s.innerHTML=C().map(c=>`<option value="${c.id}" ${c.id===AV().catId?'selected':''}>${c.name}</option>`).join('');renderFolderSelect();}
+function renderCatSelect(){const s=document.getElementById('new-task-cat');if(!s)return;const selId=AV().catId||C()[0]?.id;s.innerHTML=C().map(c=>`<option value="${c.id}" ${c.id===selId?'selected':''}>${c.name}</option>`).join('');renderFolderSelect();}
 function renderFolderSelect(){const cs=document.getElementById('new-task-cat'),fs=document.getElementById('new-task-folder');if(!cs||!fs)return;fs.innerHTML=`<option value="">— none —</option>`+F().filter(f=>f.catId===cs.value).map(f=>`<option value="${f.id}" ${f.id===AV().folderId?'selected':''}>${f.name}</option>`).join('');}
 
 // ── TASK ACTIONS ──
@@ -919,9 +990,14 @@ function addTask(){
   const deadline=document.getElementById('new-task-deadline').value;
   const timeframe=document.getElementById('new-task-timeframe').value.trim();
   const est=document.getElementById('new-task-est').value;
-  window._tasks.push({id:'t'+NI(),catId,folderId,nameHtml:html,done:false,deadline,timeframe,estHours:est?parseFloat(est):'',actualHours:'',expanded:false,subtasks:[],important:window._newImportant||false});
+  const today=window._newToday||(AV().type==='today');
+  const thisWeek=window._newThisWeek||(AV().type==='thisWeek');
+  window._tasks.push({id:'t'+NI(),catId,folderId,nameHtml:html,done:false,deadline,timeframe,estHours:est?parseFloat(est):'',actualHours:'',expanded:false,subtasks:[],important:window._newImportant||false,today:today||false,thisWeek:thisWeek||false});
   el.innerHTML='';['new-task-deadline','new-task-timeframe','new-task-est'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   window._newImportant=false;const sb=document.getElementById('new-task-star');if(sb){sb.textContent='☆';sb.classList.remove('starred');}
+  window._newToday=false;window._newThisWeek=false;
+  const tb=document.getElementById('new-task-today-btn');if(tb)tb.classList.remove('today-active');
+  const wb=document.getElementById('new-task-week-btn');if(wb)wb.classList.remove('week-active');
   sched();render();
 }
 
@@ -952,27 +1028,41 @@ function openModal(type,data){
     mc.innerHTML=`<div class="modal-title">Edit ${isF?'Folder':'Category'}</div><div class="modal-fields"><div class="form-group"><div class="form-label">Name</div><input class="form-input" id="m-name" value="${esc(item.name)}" style="width:100%" ${isG?'disabled':''}></div><div class="form-group"><div class="form-label">Color</div><div class="color-grid">${PALETTE.map(c=>`<div class="color-opt ${c===item.color?'selected':''}" style="background:${c}" data-c="${c}" onclick="pc(this,'${c}')"></div>`).join('')}</div></div></div><div class="modal-actions">${!isG?`<button class="btn btn-danger" onclick="delItem('${isF?'folder':'cat'}','${item.id}')">Delete</button>`:''}<div style="flex:1"></div><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveItem('${isF?'folder':'cat'}','${item.id}')">Save</button></div>`;
   }else if(type==='editTask'){
     const t=T().find(t=>t.id===data);if(!t){closeModal();return;}
-    mc.innerHTML=`<div class="modal-title">Edit Task</div><div class="modal-fields"><div class="form-group"><div class="form-label">Name</div><input class="form-input" id="m-name" value="${escA(t.nameHtml||t.name||'')}" style="width:100%"></div><div class="form-group"><div class="form-label">Deadline</div><input class="form-input" id="m-deadline" type="datetime-local" value="${t.deadline||''}" style="width:100%"></div><div class="form-group"><div class="form-label">Timeframe</div><input class="form-input" id="m-timeframe" value="${esc(t.timeframe||'')}" placeholder="e.g. next month" style="width:100%"></div><div class="form-group"><div class="form-label">Category</div><select class="form-select" id="m-cat" style="width:100%" onchange="updFolderOpts()">${C().map(c=>`<option value="${c.id}" ${c.id===t.catId?'selected':''}>${c.name}</option>`).join('')}</select></div><div class="form-group"><div class="form-label">Folder</div><select class="form-select" id="m-folder" style="width:100%"><option value="">— none —</option>${F().filter(f=>f.catId===t.catId).map(f=>`<option value="${f.id}" ${f.id===t.folderId?'selected':''}>${f.name}</option>`).join('')}</select></div><div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer"><input type="checkbox" id="m-important" ${t.important?'checked':''} style="width:14px;height:14px"> ★ Mark as important</label></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditTask('${t.id}')">Save</button></div>`;
+    mc.innerHTML=`<div class="modal-title">Edit Task</div><div class="modal-fields"><div class="form-group"><div class="form-label">Name</div><input class="form-input" id="m-name" value="${escA(t.nameHtml||t.name||'')}" style="width:100%"></div><div class="form-group"><div class="form-label">Deadline</div><input class="form-input" id="m-deadline" type="datetime-local" value="${t.deadline||''}" style="width:100%"></div><div class="form-group"><div class="form-label">Timeframe</div><input class="form-input" id="m-timeframe" value="${esc(t.timeframe||'')}" placeholder="e.g. next month" style="width:100%"></div><div class="form-group"><div class="form-label">Category</div><select class="form-select" id="m-cat" style="width:100%" onchange="updFolderOpts()">${C().map(c=>`<option value="${c.id}" ${c.id===t.catId?'selected':''}>${c.name}</option>`).join('')}</select></div><div class="form-group"><div class="form-label">Folder</div><select class="form-select" id="m-folder" style="width:100%"><option value="">— none —</option>${F().filter(f=>f.catId===t.catId).map(f=>`<option value="${f.id}" ${f.id===t.folderId?'selected':''}>${f.name}</option>`).join('')}</select></div><div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer"><input type="checkbox" id="m-important" ${t.important?'checked':''} style="width:14px;height:14px"> ★ Mark as important</label></div><div class="form-group" style="flex-direction:row;gap:20px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);cursor:pointer"><input type="checkbox" id="m-today" ${t.today?'checked':''} style="width:14px;height:14px"><span style="color:var(--accent)">☀️ Today</span></label><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);cursor:pointer"><input type="checkbox" id="m-thisweek" ${t.thisWeek?'checked':''} style="width:14px;height:14px"><span style="color:var(--accent3)">📆 This Week</span></label></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditTask('${t.id}')">Save</button></div>`;
   }
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
 function pc(el,c){window._sc=c;document.querySelectorAll('.color-opt').forEach(d=>d.classList.toggle('selected',d.dataset.c===c));}
 function addCat(){const n=document.getElementById('m-name')?.value.trim();if(!n)return;const id='cat'+NI();C().push({id,name:n,color:window._sc||PALETTE[0],open:true});closeModal();setAV({catId:id,folderId:null});sched();render();}
 function addFolder(){const n=document.getElementById('m-name')?.value.trim(),catId=document.getElementById('m-cat')?.value;if(!n||!catId)return;const id='f'+NI();F().push({id,catId,name:n,color:window._sc||PALETTE[5]});const cat=C().find(c=>c.id===catId);if(cat)cat.open=true;closeModal();setAV({catId,folderId:id});sched();render();}
-function quickAdd(){const n=document.getElementById('m-name')?.value.trim();if(!n)return;const est=document.getElementById('m-est')?.value;window._tasks.push({id:'t'+NI(),catId:'general',folderId:null,nameHtml:esc(n),done:false,deadline:'',timeframe:'',estHours:est?parseFloat(est):'',actualHours:'',expanded:false,subtasks:[],important:false});closeModal();setAV({catId:'general',folderId:null});sched();render();}
+function quickAdd(){const n=document.getElementById('m-name')?.value.trim();if(!n)return;const est=document.getElementById('m-est')?.value;window._tasks.push({id:'t'+NI(),catId:'general',folderId:null,nameHtml:esc(n),done:false,deadline:'',timeframe:'',estHours:est?parseFloat(est):'',actualHours:'',expanded:false,subtasks:[],important:false,today:false,thisWeek:false});closeModal();setAV({catId:'general',folderId:null});sched();render();}
 function updFolderOpts(){const cs=document.getElementById('m-cat'),fs=document.getElementById('m-folder');if(!cs||!fs)return;fs.innerHTML=`<option value="">— none —</option>`+F().filter(f=>f.catId===cs.value).map(f=>`<option value="${f.id}">${f.name}</option>`).join('');}
 function openRecategorize(id){openModal('recategorize',id);}
 function doRecat(id){const t=T().find(t=>t.id===id),cs=document.getElementById('m-cat'),fs=document.getElementById('m-folder');if(!t||!cs){closeModal();return;}t.catId=cs.value;t.folderId=fs?.value||null;closeModal();sched();render();}
-function openEditCurrent(){AV().folderId?openModal('editCat',{type:'folder',id:AV().folderId}):openModal('editCat',{type:'cat',id:AV().catId});}
+function openEditCurrent(){if(AV().type)return;AV().folderId?openModal('editCat',{type:'folder',id:AV().folderId}):openModal('editCat',{type:'cat',id:AV().catId});}
 function saveItem(type,id){const n=document.getElementById('m-name')?.value.trim(),col=window._sc;if(type==='cat'){const c=C().find(c=>c.id===id);if(c){if(n)c.name=n;if(col)c.color=col;}}else{const f=F().find(f=>f.id===id);if(f){if(n)f.name=n;if(col)f.color=col;}}closeModal();sched();render();}
 function delItem(type,id){if(!confirm(`Delete this ${type}? Tasks inside will not be deleted.`))return;if(type==='cat'){if(id==='general')return;T().forEach(t=>{if(t.catId===id)t.catId='general';});window._folders=F().filter(f=>f.catId!==id);window._categories=C().filter(c=>c.id!==id);setAV({catId:'general',folderId:null});}else{T().forEach(t=>{if(t.folderId===id)t.folderId=null;});window._folders=F().filter(f=>f.id!==id);setAV({catId:AV().catId,folderId:null});}closeModal();sched();render();}
 function openEditTask(id){openModal('editTask',id);}
-function saveEditTask(id){const t=T().find(t=>t.id===id);if(!t){closeModal();return;}const n=document.getElementById('m-name')?.value;if(n!==undefined)t.nameHtml=n;t.deadline=document.getElementById('m-deadline')?.value||'';t.timeframe=document.getElementById('m-timeframe')?.value.trim()||'';const catId=document.getElementById('m-cat')?.value,folderId=document.getElementById('m-folder')?.value||null;if(catId)t.catId=catId;t.folderId=folderId;t.important=document.getElementById('m-important')?.checked||false;closeModal();sched();render();}
+function saveEditTask(id){const t=T().find(t=>t.id===id);if(!t){closeModal();return;}const n=document.getElementById('m-name')?.value;if(n!==undefined)t.nameHtml=n;t.deadline=document.getElementById('m-deadline')?.value||'';t.timeframe=document.getElementById('m-timeframe')?.value.trim()||'';const catId=document.getElementById('m-cat')?.value,folderId=document.getElementById('m-folder')?.value||null;if(catId)t.catId=catId;t.folderId=folderId;t.important=document.getElementById('m-important')?.checked||false;t.today=document.getElementById('m-today')?.checked||false;t.thisWeek=document.getElementById('m-thisweek')?.checked||false;closeModal();sched();render();}
 
 // ── UTILS ──
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s||'').replace(/"/g,'&quot;');}
 function fmtDL(d){const now=new Date(),diff=d-now,h=Math.abs(diff)/3600000;if(h<1)return diff<0?'overdue':'< 1h';if(h<24)return(diff<0?'-':'')+Math.round(h)+'h';const days=Math.round(h/24);return(diff<0?'-':'')+days+'d · '+d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+
+// ── TODAY / THIS WEEK ──
+function toggleToday(id){const t=T().find(t=>t.id===id);if(t){t.today=!t.today;sched();render();}}
+function toggleThisWeek(id){const t=T().find(t=>t.id===id);if(t){t.thisWeek=!t.thisWeek;sched();render();}}
+function toggleNewToday(){
+  window._newToday=!window._newToday;
+  const btn=document.getElementById('new-task-today-btn');
+  if(btn)btn.classList.toggle('today-active',window._newToday);
+}
+function toggleNewThisWeek(){
+  window._newThisWeek=!window._newThisWeek;
+  const btn=document.getElementById('new-task-week-btn');
+  if(btn)btn.classList.toggle('week-active',window._newThisWeek);
+}
 
 // ── IMPORTANT ──
 function toggleImportant(id){const t=T().find(t=>t.id===id);if(t){t.important=!t.important;sched();render();}}
