@@ -292,6 +292,24 @@
   .star-btn.starred { color: var(--accent); }
   .tag.important { border-color: var(--accent); color: var(--accent); }
 
+  /* ── NOTES ── */
+  .notes-grid { flex: 1; overflow-y: auto; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; align-content: start; }
+  .note-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: var(--radius); display: flex; flex-direction: column; transition: border-color 0.15s; }
+  .note-card:hover { border-color: var(--surface3); }
+  .note-title { background: none; border: none; padding: 11px 12px 5px; font-size: 14px; color: var(--text); font-family: var(--font); font-style: italic; outline: none; width: 100%; }
+  .note-title::placeholder { color: var(--text3); font-style: italic; }
+  .note-body { background: none; border: none; padding: 4px 12px 10px; font-size: 13px; color: var(--text2); font-family: var(--font); outline: none; resize: none; min-height: 80px; line-height: 1.65; width: 100%; }
+  .note-body::placeholder { color: var(--text3); }
+  .note-footer { padding: 5px 8px 5px 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .note-date { font-size: 10px; color: var(--text3); font-family: monospace; flex-shrink: 0; }
+  .note-color-dot { width: 10px; height: 10px; border-radius: 50%; cursor: pointer; border: 1.5px solid transparent; transition: transform 0.1s; flex-shrink: 0; }
+  .note-color-dot:hover { transform: scale(1.25); }
+  .note-color-dot.active { border-color: var(--text); transform: scale(1.2); }
+  .notes-sidebar-item { padding: 8px 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text2); border-left: 2px solid transparent; transition: all 0.15s; user-select: none; font-size: 13px; }
+  .notes-sidebar-item:hover { background: var(--surface2); color: var(--text); }
+  .notes-sidebar-item.active { border-left-color: var(--accent3); color: var(--accent3); background: var(--surface2); }
+  @media (max-width: 640px) { .notes-grid { grid-template-columns: 1fr; padding: 8px 8px; } }
+
   /* ── STREAK & BADGES ── */
   .streak-display { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; display: flex; align-items: center; gap: 18px; }
   .streak-num { font-size: 44px; color: var(--accent2); font-style: italic; line-height: 1; min-width: 52px; }
@@ -401,6 +419,16 @@
       </div>
       <div class="rewards-view" id="rewards-content"></div>
     </div>
+    <div id="notes-view" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+      <div class="main-header">
+        <div style="flex:1">
+          <div class="main-title">Notes</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Personal notes, reminders &amp; references</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addNote()">+ New Note</button>
+      </div>
+      <div class="notes-grid" id="notes-grid"></div>
+    </div>
   </div>
 </div>
 
@@ -479,6 +507,7 @@ function initUserData(user) {
           activeView: window._activeView,
           nextId: window._nextId,
           progress: window._progress,
+          notes: window._notes,
           updatedAt: Date.now()
         });
         setSyncStatus('live');
@@ -504,6 +533,7 @@ function initUserData(user) {
     if (d.activeView) window._activeView = d.activeView;
     if (d.nextId)     window._nextId     = d.nextId;
     if (d.progress)   window._progress   = d.progress;
+    if (d.notes)      window._notes      = d.notes;
     setSyncStatus('live');
     if (firstLoad) {
       firstLoad = false;
@@ -599,6 +629,7 @@ window._rewards={
 window._activeView={catId:'general',folderId:null};
 window._nextId=200;
 window._progress={completedDates:[],badges:[],longestStreak:0};
+window._notes=[];
 window._newImportant=false;
 
 // Shorthand references
@@ -625,8 +656,10 @@ function showPanel(p){
   currentPanel=p;
   document.getElementById('tasks-view').style.display=p==='tasks'?'flex':'none';
   document.getElementById('rewards-view').style.display=p==='rewards'?'flex':'none';
+  document.getElementById('notes-view').style.display=p==='notes'?'flex':'none';
   renderSidebar();
   if(p==='rewards')renderRewards();
+  if(p==='notes')renderNotes();
 }
 
 // ── SIDEBAR ──
@@ -663,6 +696,13 @@ function renderSidebar(){
   rewItem.innerHTML=`<span style="font-size:14px">✦</span><span style="flex:1">My Rewards</span><span style="font-size:10px;font-family:monospace;color:var(--text3)">${done} done</span>`;
   rewItem.onclick=()=>{closeMobile();showPanel('rewards');};
   el.appendChild(rewItem);
+  const div3=document.createElement('div');div3.className='sidebar-divider';el.appendChild(div3);
+  const notesLabel=document.createElement('div');notesLabel.className='sidebar-section-label';notesLabel.textContent='Notes';el.appendChild(notesLabel);
+  const notesItem=document.createElement('div');
+  notesItem.className='notes-sidebar-item'+(currentPanel==='notes'?' active':'');
+  notesItem.innerHTML=`<span style="font-size:14px">📝</span><span style="flex:1">My Notes</span><span style="font-size:10px;font-family:monospace;color:var(--text3)">${window._notes.length}</span>`;
+  notesItem.onclick=()=>{closeMobile();showPanel('notes');};
+  el.appendChild(notesItem);
 }
 
 // ── MAIN ──
@@ -956,7 +996,64 @@ function checkBadges(){
   if(changed)sched();
 }
 
-window.render=function(){renderSidebar();if(currentPanel==='tasks')renderMain();else renderRewards();}
+// ── NOTES ──
+const NOTE_COLORS=PALETTE.slice(0,10);
+function renderNotes(){
+  const el=document.getElementById('notes-grid');if(!el)return;
+  if(!window._notes.length){el.innerHTML=`<div class="empty" style="grid-column:1/-1"><strong>No notes yet.</strong>Click "+ New Note" to create your first note.<br><span style="font-size:12px;color:var(--text3)">Great for tracking days off, cover arrangements, references, or anything you want to keep handy.</span></div>`;return;}
+  el.innerHTML='';
+  window._notes.forEach(note=>{
+    const card=document.createElement('div');
+    card.className='note-card';
+    card.style.borderLeftColor=note.color||'var(--border)';
+    const colorDots=NOTE_COLORS.map(c=>`<div class="note-color-dot ${note.color===c?'active':''}" style="background:${c}" onclick="setNoteColor('${note.id}','${c}')"></div>`).join('');
+    card.innerHTML=`
+      <input class="note-title" placeholder="Untitled note…" value="${escA(note.title||'')}"
+        onblur="saveNoteField('${note.id}','title',this.value)"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();this.closest('.note-card').querySelector('.note-body').focus()}">
+      <textarea class="note-body" placeholder="Write your note…"
+        onblur="saveNoteField('${note.id}','body',this.value)">${esc(note.body||'')}</textarea>
+      <div class="note-footer">
+        <span class="note-date">${fmtNoteDate(note.updatedAt||note.createdAt)}</span>
+        <div style="display:flex;gap:3px;align-items:center">
+          ${colorDots}
+          <button class="icon-btn danger" onclick="deleteNote('${note.id}')" style="margin-left:2px">✕</button>
+        </div>
+      </div>`;
+    el.appendChild(card);
+  });
+}
+function addNote(){
+  const id='n'+NI();
+  window._notes.unshift({id,title:'',body:'',color:'',createdAt:Date.now(),updatedAt:Date.now()});
+  sched();renderNotes();renderSidebar();
+  setTimeout(()=>document.querySelector('.note-title')?.focus(),50);
+}
+function deleteNote(id){
+  window._notes=window._notes.filter(n=>n.id!==id);
+  sched();renderNotes();renderSidebar();
+}
+function saveNoteField(id,field,value){
+  const n=window._notes.find(n=>n.id===id);if(!n)return;
+  if(n[field]===value)return;
+  n[field]=value;n.updatedAt=Date.now();sched();
+  // Re-render just the date on the card without full re-render to preserve focus
+  const cards=document.querySelectorAll('.note-card');
+  const idx=window._notes.indexOf(n);
+  if(cards[idx]){const d=cards[idx].querySelector('.note-date');if(d)d.textContent=fmtNoteDate(n.updatedAt);}
+  renderSidebar();
+}
+function setNoteColor(id,color){
+  const n=window._notes.find(n=>n.id===id);if(!n)return;
+  n.color=n.color===color?'':color;n.updatedAt=Date.now();sched();renderNotes();
+}
+function fmtNoteDate(ts){
+  if(!ts)return '';
+  const d=new Date(ts);
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+
+window.render=function(){renderSidebar();if(currentPanel==='tasks')renderMain();else if(currentPanel==='rewards')renderRewards();else if(currentPanel==='notes')renderNotes();}
 // Don't call render() here — the Firebase module calls it after data loads
 </script>
 </body>
