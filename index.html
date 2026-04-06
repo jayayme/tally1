@@ -878,42 +878,48 @@ function renderRewards(){
   const done=countDone();
   const pending=R().milestones.filter(m=>!m.achieved).sort((a,b)=>a.count-b.count);
   const next=pending[0]||null;
+
+  // ── Streak & Badges (shown first so they're always visible) ──
+  const streak=computeStreak((window._progress||{}).completedDates||[]);
+  const longest=(window._progress||{}).longestStreak||0;
+  const earnedB=(window._progress||{}).badges||[];
+
   let html=`
-  <div>
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-      <div><div style="font-size:19px;font-style:italic">My Rewards</div><div style="font-size:12px;color:var(--text3);margin-top:2px">Earn rewards by completing tasks</div></div>
-      <div class="toggle-row"><span>Reward alerts</span>
-        <label class="toggle-switch"><input type="checkbox" ${R().enabled?'checked':''} onchange="R().enabled=this.checked;sched();renderRewards()"><span class="toggle-track"></span></label>
-      </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding-bottom:4px">
+    <div><div style="font-size:19px;font-style:italic">My Rewards</div><div style="font-size:12px;color:var(--text3);margin-top:2px">Earn rewards by completing tasks</div></div>
+    <div class="toggle-row"><span>Reward alerts</span>
+      <label class="toggle-switch"><input type="checkbox" ${R().enabled?'checked':''} onchange="R().enabled=this.checked;sched();renderRewards()"><span class="toggle-track"></span></label>
     </div>
   </div>
   <div class="task-counter-bar">
     <div class="task-counter-top"><div class="task-counter-num">${done}</div><div><div style="font-size:13px;color:var(--text2)">tasks completed</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${T().length-done} remaining</div></div></div>
     ${next?`<div class="next-milestone-info">Next reward at <span>${next.count} tasks</span> — ${next.count-done>0?`${next.count-done} to go`:'Ready to claim!'}</div>`:'<div class="next-milestone-info" style="color:var(--accent3)">✦ All milestones reached!</div>'}
-  </div>`;
+  </div>
+  <div class="streak-display"><div class="streak-num">${streak}</div><div><div class="streak-label">🔥 Day streak</div><div class="streak-sub">Longest: ${longest} days · complete at least one task each day to keep it going</div></div></div>
+  <div class="badges-section"><div class="badges-header"><span style="font-size:16px">🎖️</span><div class="badges-title">Achievements</div><span style="font-size:11px;color:var(--text3)">${earnedB.length}/${BADGE_DEFS.length} earned</span></div><div class="badges-grid">${BADGE_DEFS.map(b=>`<div class="badge-item ${earnedB.includes(b.id)?'earned':'locked'}" title="${b.desc}"><div class="badge-emoji">${b.emoji}</div><div class="badge-name">${b.name}</div><div class="badge-desc">${b.desc}</div></div>`).join('')}</div></div>`;
 
-  const allR=[...R().small,...R().big];
-
+  // ── Small Rewards ──
   html+=`<div class="reward-tier"><div class="reward-tier-header small"><span style="font-size:18px">⭐</span><div style="flex:1"><div class="reward-tier-name small">Small Rewards</div><div class="reward-tier-desc">Everyday treats for steady progress</div></div><span style="font-size:11px;color:var(--text3);font-family:monospace">${R().small.filter(r=>r.earned).length}/${R().small.length} earned</span></div>
-  <div class="reward-list">${R().small.map(r=>`<div class="reward-item ${r.earned?'reward-earned':''}"><div class="reward-item-icon">${r.emoji||'⭐'}</div><div class="reward-item-body"><div class="reward-item-name">${esc(r.name)}</div>${r.earned?'<div class="reward-item-note">Earned ✓</div>':''}</div><div class="reward-item-actions">${!r.earned?`<button class="icon-btn" onclick="earnReward('${r.id}')" style="color:var(--small-reward)">✓</button>`:''}<button class="icon-btn" onclick="openEditReward('${r.id}')">✎</button><button class="icon-btn danger" onclick="deleteReward('${r.id}')">✕</button></div></div>`).join('')}</div>
+  <div class="reward-list">${R().small.map(r=>`<div class="reward-item ${r.earned?'reward-earned':''}">
+    <input class="reward-emoji-input" value="${escA(r.emoji||'⭐')}" onchange="updateRewardField('${r.id}','emoji',this.value)" style="width:38px;text-align:center;background:transparent;border:1px solid transparent;border-radius:4px;font-size:18px;cursor:text;padding:2px" onfocus="this.style.borderColor='var(--border)'" onblur="this.style.borderColor='transparent'">
+    <div class="reward-item-body"><input class="reward-name-input" value="${escA(r.name)}" onchange="updateRewardField('${r.id}','name',this.value)" style="background:transparent;border:1px solid transparent;border-radius:4px;font-size:13px;color:var(--text1);width:100%;padding:2px 4px;cursor:text" onfocus="this.style.borderColor='var(--border)'" onblur="this.style.borderColor='transparent'">${r.earned?'<div class="reward-item-note">Earned ✓</div>':''}</div>
+    <div class="reward-item-actions">${!r.earned?`<button class="icon-btn" onclick="earnReward('${r.id}')" style="color:var(--small-reward)" title="Mark earned">✓</button>`:''}<button class="icon-btn danger" onclick="deleteReward('${r.id}')" title="Delete">✕</button></div>
+  </div>`).join('')}</div>
   <div class="reward-add-row"><input class="reward-add-input" id="new-small-emoji" placeholder="⭐" style="width:44px;text-align:center;flex:none"><input class="reward-add-input" id="new-small-name" placeholder="Add a small reward…" onkeydown="if(event.key==='Enter')addReward('small')"><button class="btn btn-secondary btn-sm" onclick="addReward('small')">+ Add</button></div></div>`;
 
+  // ── Big Rewards ──
   html+=`<div class="reward-tier"><div class="reward-tier-header big"><span style="font-size:18px">🏆</span><div style="flex:1"><div class="reward-tier-name big">Big Rewards</div><div class="reward-tier-desc">Special treats for major milestones</div></div><span style="font-size:11px;color:var(--text3);font-family:monospace">${R().big.filter(r=>r.earned).length}/${R().big.length} earned</span></div>
-  <div class="reward-list">${R().big.map(r=>`<div class="reward-item ${r.earned?'reward-earned':''}"><div class="reward-item-icon">${r.emoji||'🏆'}</div><div class="reward-item-body"><div class="reward-item-name">${esc(r.name)}</div>${r.earned?'<div class="reward-item-note">Earned ✓</div>':''}</div><div class="reward-item-actions">${!r.earned?`<button class="icon-btn" onclick="earnReward('${r.id}')" style="color:var(--big-reward)">✓</button>`:''}<button class="icon-btn" onclick="openEditReward('${r.id}')">✎</button><button class="icon-btn danger" onclick="deleteReward('${r.id}')">✕</button></div></div>`).join('')}</div>
+  <div class="reward-list">${R().big.map(r=>`<div class="reward-item ${r.earned?'reward-earned':''}">
+    <input class="reward-emoji-input" value="${escA(r.emoji||'🏆')}" onchange="updateRewardField('${r.id}','emoji',this.value)" style="width:38px;text-align:center;background:transparent;border:1px solid transparent;border-radius:4px;font-size:18px;cursor:text;padding:2px" onfocus="this.style.borderColor='var(--border)'" onblur="this.style.borderColor='transparent'">
+    <div class="reward-item-body"><input class="reward-name-input" value="${escA(r.name)}" onchange="updateRewardField('${r.id}','name',this.value)" style="background:transparent;border:1px solid transparent;border-radius:4px;font-size:13px;color:var(--text1);width:100%;padding:2px 4px;cursor:text" onfocus="this.style.borderColor='var(--border)'" onblur="this.style.borderColor='transparent'">${r.earned?'<div class="reward-item-note">Earned ✓</div>':''}</div>
+    <div class="reward-item-actions">${!r.earned?`<button class="icon-btn" onclick="earnReward('${r.id}')" style="color:var(--big-reward)" title="Mark earned">✓</button>`:''}<button class="icon-btn danger" onclick="deleteReward('${r.id}')" title="Delete">✕</button></div>
+  </div>`).join('')}</div>
   <div class="reward-add-row"><input class="reward-add-input" id="new-big-emoji" placeholder="🏆" style="width:44px;text-align:center;flex:none"><input class="reward-add-input" id="new-big-name" placeholder="Add a big reward…" onkeydown="if(event.key==='Enter')addReward('big')"><button class="btn btn-secondary btn-sm" onclick="addReward('big')">+ Add</button></div></div>`;
 
+  // ── Milestones ──
   html+=`<div class="milestones-section"><div class="milestones-header"><span style="font-size:16px">🎯</span><div class="milestones-title">Milestones</div><span style="font-size:11px;color:var(--text3)">Complete N tasks → earn a reward</span></div>
-  ${R().milestones.sort((a,b)=>a.count-b.count).map(m=>{const isS=R().small.some(r=>r.id===m.rewardId);return `<div class="milestone-row ${m.achieved?'milestone-achieved':''}"><div class="milestone-count-badge">${m.count}</div><div style="font-size:11px;color:var(--text3);min-width:36px">tasks</div><select class="milestone-reward-select" onchange="updateMilestoneReward('${m.id}',this.value)"><option value="">— no reward —</option><optgroup label="⭐ Small">${R().small.map(r=>`<option value="${r.id}" ${r.id===m.rewardId?'selected':''}>${r.emoji||'⭐'} ${esc(r.name)}</option>`).join('')}</optgroup><optgroup label="🏆 Big">${R().big.map(r=>`<option value="${r.id}" ${r.id===m.rewardId?'selected':''}>${r.emoji||'🏆'} ${esc(r.name)}</option>`).join('')}</optgroup></select>${m.rewardId?`<span class="milestone-type ${isS?'small':'big'}">${isS?'small':'big'}</span>`:''} ${m.achieved?'<span style="font-size:11px;color:var(--accent3)">✓</span>':''}<button class="icon-btn danger" onclick="deleteMilestone('${m.id}')">✕</button></div>`;}).join('')}
+  ${R().milestones.sort((a,b)=>a.count-b.count).map(m=>{const isS=R().small.some(r=>r.id===m.rewardId);return `<div class="milestone-row ${m.achieved?'milestone-achieved':''}"><input type="number" class="form-input milestone-count-edit" value="${m.count}" min="1" step="1" onchange="updateMilestoneCount('${m.id}',this.value)" style="width:58px;padding:4px 6px;font-size:13px;text-align:center"><div style="font-size:11px;color:var(--text3);min-width:36px">tasks</div><select class="milestone-reward-select" onchange="updateMilestoneReward('${m.id}',this.value)"><option value="">— no reward —</option><optgroup label="⭐ Small">${R().small.map(r=>`<option value="${r.id}" ${r.id===m.rewardId?'selected':''}>${r.emoji||'⭐'} ${esc(r.name)}</option>`).join('')}</optgroup><optgroup label="🏆 Big">${R().big.map(r=>`<option value="${r.id}" ${r.id===m.rewardId?'selected':''}>${r.emoji||'🏆'} ${esc(r.name)}</option>`).join('')}</optgroup></select>${m.rewardId?`<span class="milestone-type ${isS?'small':'big'}">${isS?'small':'big'}</span>`:''} ${m.achieved?'<span style="font-size:11px;color:var(--accent3)" title="Achieved">✓</span>':''}<button class="icon-btn danger" onclick="deleteMilestone('${m.id}')">✕</button></div>`;}).join('')}
   <div class="add-milestone-row"><span style="font-size:12px;color:var(--text3)">At</span><input class="form-input" id="new-ms-count" type="number" min="1" step="1" placeholder="15" style="width:68px;padding:5px 8px;font-size:12px"><span style="font-size:12px;color:var(--text3)">tasks, award:</span><select class="form-select" id="new-ms-reward" style="flex:1;min-width:120px;font-size:12px;padding:5px 8px"><option value="">— pick a reward —</option><optgroup label="⭐ Small">${R().small.map(r=>`<option value="${r.id}">${r.emoji||'⭐'} ${esc(r.name)}</option>`).join('')}</optgroup><optgroup label="🏆 Big">${R().big.map(r=>`<option value="${r.id}">${r.emoji||'🏆'} ${esc(r.name)}</option>`).join('')}</optgroup></select><button class="btn btn-secondary btn-sm" onclick="addMilestone()">+ Add</button></div></div><div style="height:20px"></div>`;
-
-  // ── Streak ──
-  const streak=computeStreak((window._progress||{}).completedDates||[]);
-  const longest=(window._progress||{}).longestStreak||0;
-  html+=`<div class="streak-display"><div class="streak-num">${streak}</div><div><div class="streak-label">🔥 Day streak</div><div class="streak-sub">Longest: ${longest} days · complete at least one task each day to keep it going</div></div></div>`;
-
-  // ── Badges ──
-  const earnedB=(window._progress||{}).badges||[];
-  html+=`<div class="badges-section"><div class="badges-header"><span style="font-size:16px">🎖️</span><div class="badges-title">Achievements</div><span style="font-size:11px;color:var(--text3)">${earnedB.length}/${BADGE_DEFS.length} earned</span></div><div class="badges-grid">${BADGE_DEFS.map(b=>`<div class="badge-item ${earnedB.includes(b.id)?'earned':'locked'}" title="${b.desc}"><div class="badge-emoji">${b.emoji}</div><div class="badge-name">${b.name}</div><div class="badge-desc">${b.desc}</div></div>`).join('')}</div></div><div style="height:20px"></div>`;
 
   el.innerHTML=html;
 }
@@ -921,15 +927,11 @@ function renderRewards(){
 function addReward(tier){const ne=document.getElementById(`new-${tier}-name`),ee=document.getElementById(`new-${tier}-emoji`);const n=ne?.value.trim();if(!n)return;const e=ee?.value.trim()||(tier==='small'?'⭐':'🏆');R()[tier].push({id:'r'+NI(),name:n,emoji:e,earned:false});ne.value='';ee.value='';sched();renderRewards();}
 function deleteReward(id){window._rewards.small=R().small.filter(r=>r.id!==id);window._rewards.big=R().big.filter(r=>r.id!==id);R().milestones.forEach(m=>{if(m.rewardId===id)m.rewardId='';});sched();renderRewards();}
 function earnReward(id){const all=[...R().small,...R().big];const r=all.find(r=>r.id===id);if(r)r.earned=true;sched();renderRewards();}
-function openEditReward(id){
-  const all=[...R().small,...R().big];const r=all.find(r=>r.id===id);if(!r)return;
-  const mc=document.getElementById('modal-content');document.getElementById('modal-overlay').classList.add('open');
-  mc.innerHTML=`<div class="modal-title">Edit Reward</div><div class="modal-fields"><div class="form-group"><div class="form-label">Emoji</div><input class="form-input" id="m-emoji" value="${escA(r.emoji||'')}" style="width:70px;text-align:center"></div><div class="form-group"><div class="form-label">Name</div><input class="form-input" id="m-name" value="${escA(r.name)}" style="width:100%"></div><div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer"><input type="checkbox" id="m-earned" ${r.earned?'checked':''} style="width:14px;height:14px"> Marked as earned</label></div></div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveReward('${id}')">Save</button></div>`;
-}
-function saveReward(id){const all=[...R().small,...R().big];const r=all.find(r=>r.id===id);if(r){r.name=document.getElementById('m-name')?.value.trim()||r.name;r.emoji=document.getElementById('m-emoji')?.value.trim()||r.emoji;r.earned=document.getElementById('m-earned')?.checked||false;}closeModal();sched();renderRewards();}
+function updateRewardField(id,field,val){const all=[...R().small,...R().big];const r=all.find(r=>r.id===id);if(r&&val.trim()){r[field]=val.trim();sched();}}
 function addMilestone(){const c=parseInt(document.getElementById('new-ms-count')?.value)||0;const rid=document.getElementById('new-ms-reward')?.value||'';if(c<1)return;R().milestones.push({id:'m'+NI(),count:c,rewardId:rid,achieved:false});sched();renderRewards();}
 function deleteMilestone(id){window._rewards.milestones=R().milestones.filter(m=>m.id!==id);sched();renderRewards();}
 function updateMilestoneReward(mid,rid){const m=R().milestones.find(m=>m.id===mid);if(m)m.rewardId=rid;sched();}
+function updateMilestoneCount(mid,val){const m=R().milestones.find(m=>m.id===mid);const n=parseInt(val);if(m&&n>=1){m.count=n;sched();}}
 
 function checkMilestones(prev,next){
   if(!R().enabled)return;
