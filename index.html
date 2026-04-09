@@ -519,10 +519,16 @@ let unsubscribeFirestore = null;
 let saveTimer = null;
 
 function initUserData(user) {
-  // Per-user document: users/{uid}/appstate
+  // Per-user document: users/{uid}
   const STATE_DOC = doc(db, 'users', user.uid);
 
+  // Guard: only allow saves after the initial Firestore load has completed.
+  // This prevents the demo-data defaults from overwriting real data during
+  // the brief window between auth and the first onSnapshot callback.
+  let dataReady = false;
+
   window.fbSave = function(immediate) {
+    if (!dataReady) return; // never write before we've read
     setSyncStatus('syncing');
     clearTimeout(saveTimer);
     const delay = immediate ? 0 : 600;
@@ -550,6 +556,16 @@ function initUserData(user) {
   let firstLoad = true;
   unsubscribeFirestore = onSnapshot(STATE_DOC, (snap) => {
     if (!snap.exists()) {
+      // Brand-new user — no document yet. Clear the demo defaults so we
+      // start with a blank slate, then create the document.
+      window._categories = [{id:'general',name:'General',color:'#a09880',open:true}];
+      window._folders    = [];
+      window._tasks      = [];
+      window._rewards    = {enabled:true,small:[],big:[],milestones:[]};
+      window._nextId     = 1;
+      window._progress   = {completedDates:[],badges:[],longestStreak:0};
+      window._notes      = [];
+      dataReady = true;
       hideLoading();
       window.fbSave(true);
       return;
@@ -563,6 +579,7 @@ function initUserData(user) {
     if (d.nextId)     window._nextId     = d.nextId;
     if (d.progress)   window._progress   = d.progress;
     if (d.notes)      window._notes      = d.notes;
+    dataReady = true; // safe to save from here on
     setSyncStatus('live');
     if (firstLoad) {
       firstLoad = false;
